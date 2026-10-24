@@ -100,6 +100,7 @@ NriStruct(SwapChainDesc) {
     NriOptional Nri(Scaling) scaling;           // VK: if scaling is not supported, "OUT_OF_DATE" error is triggered on resizing
     NriOptional Nri(Gravity) gravityX;
     NriOptional Nri(Gravity) gravityY;
+    NriOptional NriPtr(SwapChain) oldSwapChain;
 };
 
 NriStruct(ChromaticityCoords) {

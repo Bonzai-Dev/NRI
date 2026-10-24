@@ -49,6 +49,7 @@ private:
     VkSwapchainKHR m_Handle = VK_NULL_HANDLE;
     VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
     QueueVK* m_Queue = nullptr;
+    SwapChainVK* m_OldSwapChain = nullptr;
     void* m_Hwnd = nullptr;
     uint32_t m_TextureIndex = 0;
     SwapChainBits m_Flags = SwapChainBits::NONE;

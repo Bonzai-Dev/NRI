@@ -265,6 +265,7 @@ NRI_INLINE Result DeviceVal::CreateSwapChain(const SwapChainDesc& swapChainDesc,
 
     auto swapChainDescImpl = swapChainDesc;
     swapChainDescImpl.queue = NRI_GET_IMPL(Queue, swapChainDesc.queue);
+    swapChainDescImpl.oldSwapChain = NRI_GET_IMPL(SwapChain, swapChainDesc.oldSwapChain);
 
     SwapChain* swapChainImpl = nullptr;
     Result result = m_iSwapChainImpl.CreateSwapChain(m_Impl, swapChainDescImpl, swapChainImpl);

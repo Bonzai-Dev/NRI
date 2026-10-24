@@ -1,5 +1,6 @@
 // © 2021 NVIDIA Corporation
 
+#include "Extensions/NRISwapChain.h"
 constexpr uint32_t PRESENT_MODE_MAX_NUM = 16;
 
 static constexpr VkPresentGravityFlagBitsKHR GetGravity(Gravity gravity) {
@@ -27,7 +28,7 @@ SwapChainVK::~SwapChainVK() {
     if (m_Handle)
         vk.DestroySwapchainKHR(m_Device, m_Handle, m_Device.GetVkAllocationCallbacks());
 
-    if (m_Surface)
+    if (m_Surface && !m_OldSwapChain)
         vk.DestroySurfaceKHR(m_Device, m_Surface, m_Device.GetVkAllocationCallbacks());
 }
 
@@ -35,9 +36,11 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
     const auto& vk = m_Device.GetDispatchTable();
 
     m_Queue = (QueueVK*)swapChainDesc.queue;
+    m_OldSwapChain = (SwapChainVK*)swapChainDesc.oldSwapChain;
+
     uint32_t familyIndex = m_Queue->GetFamilyIndex();
 
-    { // Create surface
+    if (!m_OldSwapChain) { // Create surface
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         if (swapChainDesc.window.windows.hwnd) {
             VkWin32SurfaceCreateInfoKHR win32SurfaceInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
@@ -90,6 +93,9 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "GetPhysicalDeviceSurfaceSupportKHR");
 
         NRI_RETURN_ON_FAILURE(&m_Device, supported, Result::FAILURE, "Surface is not supported");
+    } else {
+        m_Surface = m_OldSwapChain->m_Surface;
+        m_OldSwapChain->m_Surface = VK_NULL_HANDLE;
     }
 
     // Low latency
@@ -354,6 +360,7 @@ Result SwapChainVK::Create(const SwapChainDesc& swapChainDesc) {
         swapchainInfo.preTransform = preTransform;
         swapchainInfo.compositeAlpha = compositeAlpha;
         swapchainInfo.presentMode = presentMode;
+        swapchainInfo.oldSwapchain = m_OldSwapChain ? m_OldSwapChain->m_Handle : VK_NULL_HANDLE;
         PNEXTCHAIN_DECLARE(swapchainInfo.pNext);
 
         VkSwapchainPresentScalingCreateInfoKHR scalingInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR};
@@ -520,6 +527,9 @@ NRI_INLINE Result SwapChainVK::Present(FenceVK& releaseSemaphore, uint64_t prese
 
     if ((m_Flags & SwapChainBits::ALLOW_LOW_LATENCY) && presentIdValue != 0)
         SetLatencyMarker(presentIdValue, (LatencyMarker)VK_LATENCY_MARKER_PRESENT_END_NV);
+
+    if (vkResult == VK_ERROR_OUT_OF_DATE_KHR)
+        return Result::OUT_OF_DATE;
 
     NRI_RETURN_ON_BAD_VKRESULT(&m_Device, vkResult, "QueuePresentKHR");
 
